@@ -4,12 +4,13 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 ### Project Description
 6-wk old Sprague Dawley rats were fed a standard rat chow diet (CON), a diet supplemented with amylose-free whole grain maize (WG), a diet supplemented with high-amylose purified maize starch (RS), or a diet supplemented with high-amylose whole grain maize (WG+RS) for 6 weeks. The four main diet groups were further split into medium-fat (~30% kcal from fat) and high-fat (~42% kcal from fat) diet arms to investigate how dietary fat levels influence the outcomes of fiber consumption. Cecal contents were harvested then flash frozen, and gDNA and RNA was extracted from the frozen cecal contents for metataxonomics and metatranscriptomics analysis.
 
-### Diet Composition - Medium Fat Diets
+### Diet Composition - Medium Fat Diets<sup>1</sup>
 | Ingredients  | CON  | RS  | WG  | WG+RS |
 | ------------- | ------------- | ------------- | ------------- | ------------- |
-| Waxy cornstarch (g)  | 473.30  | 72.31  | 67.83  | 143.74 |
-| High-amylose whole-grain flour (g)  | 0  | 524.00  | 0  | 0 |
-| Waxy whole-grain flour(g)  | 0  | 0 | 500.00  | 0 |
+| Waxy cornstarch (g)<sup>2</sup>  | 473.30  | 72.31  | 67.83  | 143.74 |
+| High-amylose cornstarch (g)<sup>3</sup> | 0  | 524.00  | 0  | 0 |
+| High-amylose whole-grain flour (g)<sup>4</sup>  | 0  | 0 | 0 | 520.00 |
+| Waxy whole-grain flour(g)<sup>5</sup>  | 0  | 0 | 500.00  | 0 |
 | Sucrose (g)  | 100.00  | 100.00  | 100.00  | 100.00 |
 | Casein (g)  | 136.00  | 133.12  | 99.42  | 80.56 |
 | Cellulose (g)  | 115.00  | 0  | 78.00  | 24.00 |
@@ -23,13 +24,13 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 | Energy (kcal/g)  | 3.757  | 3.750  | 3.761  | 3.754  |
 | Resistant starch (%)  | 0 | 23.37 | 4.93  | 23.45  |
 
-### Diet Composition - High Fat Diets
+### Diet Composition - High Fat Diets<sup>1</sup>
 | Ingredients  | CON  | RS  | WG  | WG+RS |
 | ------------- | ------------- | ------------- | ------------- | ------------- |
-| Waxy cornstarch (g)  | 405.80  | 0  | 0  | 77.85 |
-| High-amylose cornstarch (g)  | 0  | 524.66  | 0  | 0 |
-| High-amylose whole-grain flour (g)  | 0  | 0  | 0  | 525.00 |
-| Waxy whole-grain flour(g)  | 0  | 0 | 517.00  | 0 |
+| Waxy cornstarch (g)<sup>2</sup> | 405.80  | 0  | 0  | 77.85 |
+| High-amylose cornstarch (g)<sup>3</sup>  | 0  | 524.66  | 0  | 0 |
+| High-amylose whole-grain flour (g)<sup>4</sup>  | 0  | 0  | 0  | 525.00 |
+| Waxy whole-grain flour(g)<sup>5</sup>  | 0  | 0 | 517.00  | 0 |
 | Sucrose (g)  | 100.00  | 100.00  | 100.00  | 100.00 |
 | Casein (g)  | 136.75  | 133.70  | 98.74  | 80.58 |
 | Cellulose (g)  | 110.00  | 0  | 56.91  | 10.00 |
@@ -42,6 +43,16 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 | Total (g)  | 1001.40  | 1001.40 | 1001.40 | 1001.40 |
 | Energy (kcal/g)  | 4.164  | 4.136  | 4.230  | 4.209  |
 | Resistant starch (%)  | 0 | 23.32 | 5.03  | 23.41  |
+
+<sup>1</sup>Waxy & high–amylose corn starches and whole grain flours were gifts from Ingredion Incorporated (Bridgewater, NJ).
+
+<sup>2</sup>AMIOCA<sup>TM</sup> powder starch containing 100% amylopectin (100% digestible).
+
+<sup>3</sup>HI–MAIZE® 260 resistant starch.
+
+<sup>4</sup>HI-MAIZE® whole-grain corn flour with high-amylose starch.
+
+<sup>5</sup>Waxy whole-grain flour containing 100% amylopectin starch.
 
 ### MG-RAST Identifiers (RNA-Seq Metatranscriptomics)
 #### Project name: Rat Cecal Content Metatranscriptomics During Fiber Feeding
