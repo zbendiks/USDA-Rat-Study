@@ -55,7 +55,7 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 <sup>5</sup>Waxy whole-grain flour containing 100% amylopectin starch.
 
 ### MG-RAST Identifiers (RNA-Seq Metatranscriptomics)
-#### Project name: Rat Cecal Content Metatranscriptomics During Fiber Feeding
+#### Project name: Rat Cecal Content Metatranscriptomics During Fiber Feeding (link: http://www.mg-rast.org/mgmain.html?mgpage=project&project=mgp20285)
 
 - CON samples
   - mgm4824987.3 (sample 68)
