@@ -22,7 +22,7 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 | L-Cystine (g)  | 1.80  | 1.80  | 1.80  | 1.80 |
 | Total (g)  | 1001.40  | 1001.40 | 1001.40 | 1001.40 |
 | Energy (kcal/g)  | 3.757  | 3.750  | 3.761  | 3.754  |
-| Resistant starch (%)  | 0 | 23.37 | 4.93  | 23.45  |
+| Resistant starch (%)<sup>6</sup>  | 0 | 23.37 | 4.93  | 23.45  |
 
 ### Diet Composition - High Fat Diets<sup>1</sup>
 | Ingredients  | CON  | RS  | WG  | WG+RS |
@@ -42,7 +42,7 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 | L-Cystine (g)  | 1.80  | 1.80  | 1.80  | 1.80 |
 | Total (g)  | 1001.40  | 1001.40 | 1001.40 | 1001.40 |
 | Energy (kcal/g)  | 4.164  | 4.136  | 4.230  | 4.209  |
-| Resistant starch (%)  | 0 | 23.32 | 5.03  | 23.41  |
+| Resistant starch (%)<sup>6</sup>  | 0 | 23.32 | 5.03  | 23.41  |
 
 <sup>1</sup>Waxy & high–amylose corn starches and whole grain flours were gifts from Ingredion Incorporated (Bridgewater, NJ).
 
@@ -53,6 +53,8 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 <sup>4</sup>HI-MAIZE® whole-grain corn flour with high-amylose starch.
 
 <sup>5</sup>Waxy whole-grain flour containing 100% amylopectin starch.
+
+<sup>6</sup>Resistant starch content in WG diet due to resistant starch type 1, not high-amylose starch (resistant starch type 2)
 
 ### MG-RAST Identifiers (RNA-Seq Metatranscriptomics)
 #### Project name: Rat Cecal Content Metatranscriptomics During Fiber Feeding (link: http://www.mg-rast.org/mgmain.html?mgpage=project&project=mgp20285)
