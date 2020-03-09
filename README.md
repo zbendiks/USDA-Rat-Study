@@ -2,6 +2,8 @@
 Scripts I used to process USDA metataxonomics and metatranscriptomics data 
 
 ### MG-RAST Identifiers (RNA-Seq Metatranscriptomics)
+####Projecct name: Rat Cecal Content Metatranscriptomics During Fiber Feeding
+
 - CON samples
   - mgm4824987.3 (sample 18)
   - mgm4824986.3 (sample 26)
