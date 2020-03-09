@@ -1,0 +1,805 @@
+#USDA Study 1 reanalysis with QIIME2 
+#Zachary Bendiks 
+#December 4, 2019
+
+#Sequencing: Illumina MiSeq, 2x300bp protocol 
+#file location: /home/marcolabuser/Zach/USDA/OTU_check/Keenan_Run15_fastqs/
+#data came as R1 and R2 files demultiplexed by sample
+#reanalyzing 16S data with all 4 diet interventions using QIIME2 
+
+source activate qiime2-2018.4
+
+###################
+#Data import (PE)
+###################
+# to import demultiplexed PE data, see 'Casava 1.8 paired-end demultiplexed fastq' section here: https://docs.qiime2.org/2018.4/tutorials/importing/
+# I could treat R1 and R2 files as single-ended reads but for now I am processing as paired ends to reduce complexity 
+
+mkdir /home/marcolabuser/Zach/USDA/q2_dec19/
+cd /home/marcolabuser/Zach/USDA/q2_dec19/
+
+#can only import .fq.gz files so have to compress all files from Mike 
+#gzip /home/marcolabuser/Zach/USDA/OTU_check/Keenan_Run15_fastqs/*
+
+#qiime tools import \
+#  --type 'SampleData[PairedEndSequencesWithQuality]' \
+#  --input-path /home/marcolabuser/Zach/USDA/OTU_check/#Keenan_Run15_fastqs/ \
+#  --source-format CasavaOneEightSingleLanePerSampleDirFmt \
+#  --output-path /home/marcolabuser/Zach/USDA/q2_dec19/demux-paired-end.qza
+
+#ensure samples have expected sequence depth and that sample names are accurate 
+#see where quality drops off 
+#qiime demux summarize \
+#  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/demux-paired-end.qza \
+#  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/demux-paired-end.qzv
+#sample names look good
+#HM260M7, HM260M2, and WWGCH2 all had relatively low seq counts
+#total seq count: 4,265,775 reads 
+#Qual in the R2 files looks really bad compared to R1 
+
+
+###################
+#DADA2 feature detection (PE)
+###################
+#DADA2 ASV picking - note that I'm using the paired end DADA2 script
+#qiime dada2 denoise-paired \
+#--i-demultiplexed-seqs /home/marcolabuser/Zach/USDA/q2_dec19/demux-paired-end.qza \
+#--p-n-threads 23 \
+#--p-chimera-method 'consensus' \
+#--output-dir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/ \
+#--p-trunc-len-f 0 \
+#--p-trunc-len-r 0 \
+#--p-trunc-q 29
+
+#as written, this script will not size-select reads but instead trim all reads after encountering a position with < Q30
+#truncating to position 258 (where qual dips below 30) lead to the vast majority of reads being removed. I tried less stringent options  
+  
+#qiime feature-table summarize \
+#  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/table.qza \
+#  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/table.qzv
+
+#qiime feature-table tabulate-seqs \
+#  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/representative_sequences.qza \
+#  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/representative_sequences.qzv
+
+#most reads lost during the DADA2 merging step. This may be because the the qual in the R2 file drops much earlier than R1, so when the reads are truncated there's not enough overlap to merge the PE reads together. 
+
+#to get around this I will input the R1 and R2 files separately as single-end reads then merge the ASV tables. First I had to move the R1 and R2 files into separate directories  
+
+
+###################
+#Import and feature detection (SE)
+###################
+qiime tools import \
+  --type 'SampleData[SequencesWithQuality]' \
+  --input-path /home/marcolabuser/Zach/USDA/OTU_check/Keenan_Run15_fastqs/R1/ \
+  --source-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R1.qza
+
+qiime demux summarize \
+  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R1.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R1.qzv
+
+qiime tools import \
+  --type 'SampleData[SequencesWithQuality]' \
+  --input-path /home/marcolabuser/Zach/USDA/OTU_check/Keenan_Run15_fastqs/R2/ \
+  --source-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R2.qza
+
+qiime demux summarize \
+  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R2.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R2.qzv
+
+#same number of reads but the quality is much worse in R2 compared to R1.  I will denoise both datasets with quality trimming and see how well DADA2 works 
+#When I initially tried this, most of the DADA2 ASVs could not be anotated past the kingdom level.  
+qiime dada2 denoise-single \
+--i-demultiplexed-seqs /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R1.qza \
+--p-n-threads 24 \
+--p-chimera-method 'consensus' \
+--output-dir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/ \
+--p-trunc-len 0 \
+--p-trunc-q 29
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/table.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/table.qzv
+
+qiime feature-table tabulate-seqs \
+  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/representative_sequences.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/representative_sequences.qzv
+#1,946 features
+#3,919,742 seqs total 
+#min lib sizes: 650, 2510, 4558, 17304
+
+qiime dada2 denoise-single \
+--i-demultiplexed-seqs /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R2.qza \
+--p-n-threads 24 \
+--p-chimera-method 'consensus' \
+--output-dir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/ \
+--p-trunc-len 0 \
+--p-trunc-q 29
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/table.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/table.qzv
+
+qiime feature-table tabulate-seqs \
+  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/representative_sequences.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/representative_sequences.qzv
+#114 features (somewhat low)
+#2,952,218 seqs total 
+#min lib sizes: 420, 1678, 3462, 13458
+
+#treating R1 and R2 as single end reads seems to have worked.  I can now combine the feature tables and rep seqs 
+qiime feature-table merge \
+--i-tables /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/table.qza \
+--i-tables /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/table.qza \
+--p-overlap-method sum \
+--o-merged-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza
+
+qiime feature-table merge-seqs \
+--i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/representative_sequences.qza \
+--i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/representative_sequences.qza \
+--o-merged-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qzv
+
+qiime feature-table tabulate-seqs \
+  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qzv
+#2060 features
+#6,871,960 seqs total 
+#min lib sizes: 1070, 4188, 8020, 31346
+
+#generating phylogenetic tree of ASVs 
+qiime alignment mafft \
+  --i-sequences /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza \
+  --o-alignment /home/marcolabuser/Zach/USDA/q2_dec19/dada2/aligned_R1_R2_rep_seqs_merged.qza
+
+qiime alignment mask \
+  --i-alignment /home/marcolabuser/Zach/USDA/q2_dec19/dada2/aligned_R1_R2_rep_seqs_merged.qza \
+  --o-masked-alignment /home/marcolabuser/Zach/USDA/q2_dec19/dada2/masked_aligned_R1_R2_rep_seqs_merged.qza
+
+qiime phylogeny fasttree \
+  --i-alignment /home/marcolabuser/Zach/USDA/q2_dec19/dada2/masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --o-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/tree_masked_aligned_R1_R2_rep_seqs_merged.qza
+
+qiime phylogeny midpoint-root \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --o-rooted-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza
+
+
+###################
+#Diversity analyses (SE)
+###################
+#analyses with unfiltered data 
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+  --p-sampling-depth 31346 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --output-dir /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_31346/
+#beta div: clearest separation with Bray Curtis, but a fair amount of overlap between groups
+
+#identify significant differences in alpha diversity between groups
+qiime diversity alpha-rarefaction \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --p-max-depth 31346 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_31346/alpha_rarefaction.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_31346/faith_pd_vector.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_31346/alpha_sig_faith_pd.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_31346/observed_otus_vector.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_31346/alpha_sig_observed_otus.qzv
+#no differences, which is not what was observed previously
+
+#analyses with filtered data (removed ASVs in <2 samples or with <2 seqs across dataset) 
+qiime feature-table filter-features \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+  --p-min-frequency 2 \
+  --p-min-samples 2 \
+  --o-filtered-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qza
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qzv
+#590 features (~3/4 of features removed)
+#6,506,022 seqs total (~370,000 seqs lost) 
+#min lib sizes: 1070, 2603, 6350, 25494
+
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qza \
+  --p-sampling-depth 25494 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --output-dir /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/
+#beta div: clearest separation with Bray Curtis, but a fair amount of overlap between groups. Separation looks slightly better than unfiltered data so I'm moving forward with filtered data
+#looks like pH and maybe SCFA levels are associated with composition.  Should incorporate into a gneiss model 
+
+#identify significant differences in distance metrics between groups 
+qiime diversity beta-group-significance \
+  --i-distance-matrix /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/weighted_unifrac_distance_matrix.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Code2 \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/PERMANOVA_code2_weighted_unifrac_distance_matrix.qzv
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/bray_curtis_distance_matrix.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Code2 \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/PERMANOVA_code2_bray_curtis_distance_matrix.qzv
+#wUF and BC distances are significantly affected by diet
+#instead of doing PERMANOVA (default, comparing centroids) I could do PERMDISP (comparing dispersion of each group about centroid)
+
+#identify significant differences in alpha diversity between groups
+qiime diversity alpha-rarefaction \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qza \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --p-max-depth 25494 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/alpha_rarefaction.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/faith_pd_vector.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/alpha_sig_faith_pd.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/observed_otus_vector.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/alpha_sig_observed_otus.qzv
+#no differences, which is not what was observed previously
+
+###################
+#Taxonomy annotation optimization
+###################
+qiime feature-classifier classify-sklearn \
+  --i-classifier /home/marcolabuser/QIIME2/gg-13-8-99-515-806-nb-classifier.qza \
+  --i-reads /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza \
+  --o-classification /home/marcolabuser/Zach/USDA/q2_dec19/R1_R2_rep_seqs_merged_taxonomy.qza
+
+qiime metadata tabulate \
+  --m-input-file /home/marcolabuser/Zach/USDA/q2_dec19/R1_R2_rep_seqs_merged_taxonomy.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/R1_R2_rep_seqs_merged_taxonomy.qzv
+
+qiime taxa collapse \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/rarefied_table.qza \
+  --i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/R1_R2_rep_seqs_merged_taxonomy.qza \
+  --p-level 6 \
+  --o-collapsed-table /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/rarefied_table_L6.qza
+
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/rarefied_table.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/R1_R2_rep_seqs_merged_taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_25494/taxa_barplot_rarefied_table.qzv
+
+#vast majority of reads did not annotate past the kingdom (Bacteria) level. There could be something wrong with the reads themselves (residual adapter or primer sequences). I will repeat the SE denoising step with trimming + length filtering parameters defined and see if this improves annotation  
+#See: https://forum.qiime2.org/t/too-many-unassigned-or-only-at-kingdom-level-features/2934
+#still have a lot of kingdom-level annotations even after trimming off 3' end. Removed the qual trimming parameter and repeated 
+qiime dada2 denoise-single \
+--i-demultiplexed-seqs /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R1.qza \
+--p-n-threads 24 \
+--p-chimera-method 'consensus' \
+--output-dir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/ \
+--p-trunc-len 258 \
+--p-trim-left 50 
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/table.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/table.qzv
+
+#qiime feature-classifier classify-sklearn \
+#  --i-classifier /home/marcolabuser/QIIME2/gg-13-8-99-515-806-nb-classifier.qza \
+#  --i-reads /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/representative_sequences.qza \
+#  --o-classification /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxonomy.qza
+
+#qiime taxa barplot \
+#--i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/table.qza \
+#--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxonomy.qza \
+#--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+#--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxa_barplot.qzv
+
+#Most of the reads still don't have phylum level annotations. Maybe something to do with the reference database? 
+#I will try importing the Greengenes database I used in QIIME1 for taxonomy annotation and use that to train the taxonomy classifier 
+qiime tools import \
+  --type 'FeatureData[Sequence]' \
+  --input-path /home/marcolabuser/Reference_database_16S/greengenes-database/gg_13_8_otus/rep_set/99_otus.fasta \
+  --output-path /home/marcolabuser/Zach/USDA/q2_dec19/99_otus_gg_13_8.qza
+
+qiime tools import \
+  --type 'FeatureData[Taxonomy]' \
+  --source-format HeaderlessTSVTaxonomyFormat \
+  --input-path /home/marcolabuser/Reference_database_16S/greengenes-database/gg_13_8_otus/taxonomy/99_otu_taxonomy.txt \
+  --output-path /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_gg_13_8.qza
+
+#from Felicia's paper, they amplified V3-V4 not just V4 (https://onlinelibrary.wiley.com/doi/full/10.1002/mnfr.201501025) so the taxa database I've been using previously probably isn't appropriate for this dataset 
+#V3F: CCTACGGGAGGCAGCAG
+#V4R: GGACTACHVGGGTWTCTAAT
+
+qiime feature-classifier extract-reads \
+  --i-sequences /home/marcolabuser/Zach/USDA/q2_dec19/99_otus_gg_13_8.qza \
+  --p-f-primer CCTACGGGAGGCAGCAG \
+  --p-r-primer GGACTACHVGGGTWTCTAAT \
+  --o-reads /home/marcolabuser/Zach/USDA/q2_dec19/99_otus_gg_ref-seqs.qza
+
+qiime feature-classifier fit-classifier-naive-bayes \
+  --i-reference-reads /home/marcolabuser/Zach/USDA/q2_dec19/99_otus_gg_ref-seqs.qza \
+  --i-reference-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_gg_13_8.qza \
+  --o-classifier /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_classifier.qza
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_classifier.qza \
+  --i-reads /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/representative_sequences.qza \
+  --o-classification /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxonomy.qza
+
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/table.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxa_barplot.qzv
+
+#this solved the annotation issue.  Vast majority of reads were successfully annotated past the kingdom level. I am relaxing the end-trimming parameters during the DADA2 step and will re-perform the annotation
+#17 bp F primer + 8 bp barcode = 25 bp. Ensures no residual primer sequence is retained in the reads
+qiime dada2 denoise-single \
+--i-demultiplexed-seqs /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R1.qza \
+--p-n-threads 15 \
+--p-chimera-method 'consensus' \
+--output-dir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/ \
+--p-trunc-len 0 \
+--p-trim-left 25 \
+--p-trunc-q 29
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/table.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/table.qzv
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_classifier.qza \
+  --i-reads /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/representative_sequences.qza \
+  --o-classification /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxonomy.qza
+
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/table.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/trimming/taxa_barplot.qzv
+#most reads annotated past the phylum level, but some individual samples have a really high proportion of k_Bacteria reads. These likely represent reads that were truncated early due to a low-qual position.
+
+#I want to see how this compares to data without qual trimming but truncated at the position where overall quality drops below 30 in the demux file, which is more similar to how we've done it previously 
+qiime dada2 denoise-single \
+--i-demultiplexed-seqs /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R1.qza \
+--p-n-threads 15 \
+--p-chimera-method 'consensus' \
+--output-dir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/ \
+--p-trunc-len 258 \
+--p-trim-left 25 
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table.qzv
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_classifier.qza \
+  --i-reads /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/representative_sequences.qza \
+  --o-classification /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza
+
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+#3,568,596 seqs
+#3,472 features (that's a lot) 
+#min sample sizes: 623, 2341, 4500, 17591
+#taxa summary looks much better than the qual-trimmed data 
+
+#repeat with R2 file
+qiime dada2 denoise-single \
+--i-demultiplexed-seqs /home/marcolabuser/Zach/USDA/q2_dec19/demux-single-end-R2.qza \
+--p-n-threads 24 \
+--p-chimera-method 'consensus' \
+--output-dir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/ \
+--p-trunc-len 105 \
+--p-trim-left 25 
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/table.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/table.qzv
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_classifier.qza \
+  --i-reads /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/representative_sequences.qza \
+  --o-classification /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/taxonomy.qza
+
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/table.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/taxa_barplot.qzv
+#4,087,158 seqs
+#482 features 
+#min sample sizes: 652, 2572, 4906, 18660
+#data looks good
+
+#merging files 
+qiime feature-table merge \
+--i-tables /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table.qza \
+--i-tables /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/table.qza \
+--p-overlap-method sum \
+--o-merged-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_classifier.qza \
+  --i-reads /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza \
+  --o-classification /home/marcolabuser/Zach/USDA/q2_dec19/dada2/taxonomy.qza
+
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/taxa_barplot.qzv
+
+qiime feature-table merge-seqs \
+--i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/representative_sequences.qza \
+--i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R2/no_qual_trimming/representative_sequences.qza \
+--o-merged-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qzv
+
+qiime feature-table tabulate-seqs \
+  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qzv
+#3,954 features
+#7,655,754 seqs total 
+#min lib sizes: 1275, 4913, 9406, 36251
+
+#generating phylogenetic tree of merged ASVs 
+qiime alignment mafft \
+  --i-sequences /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza \
+  --o-alignment /home/marcolabuser/Zach/USDA/q2_dec19/dada2/aligned_R1_R2_rep_seqs_merged.qza
+
+qiime alignment mask \
+  --i-alignment /home/marcolabuser/Zach/USDA/q2_dec19/dada2/aligned_R1_R2_rep_seqs_merged.qza \
+  --o-masked-alignment /home/marcolabuser/Zach/USDA/q2_dec19/dada2/masked_aligned_R1_R2_rep_seqs_merged.qza
+
+qiime phylogeny fasttree \
+  --i-alignment /home/marcolabuser/Zach/USDA/q2_dec19/dada2/masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --o-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/tree_masked_aligned_R1_R2_rep_seqs_merged.qza
+
+qiime phylogeny midpoint-root \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --o-rooted-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza
+
+#analyses with unfiltered data 
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+  --p-sampling-depth 36251 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --output-dir /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/
+#beta div: clearest separation with Bray Curtis, but a fair amount of overlap between groups
+
+#identify significant differences in alpha diversity between groups
+qiime diversity alpha-rarefaction \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --p-max-depth 36251 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/alpha_rarefaction.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/faith_pd_vector.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/alpha_sig_faith_pd.qzv
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/weighted_unifrac_distance_matrix.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Code2 \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/PERMANOVA_code2_weighted_unifrac_distance_matrix.qzv
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/bray_curtis_distance_matrix.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Code2 \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/PERMANOVA_code2_bray_curtis_distance_matrix.qzv
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier /home/marcolabuser/Zach/USDA/q2_dec19/99_otu_taxonomy_classifier.qza \
+  --i-reads /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_rep_seqs_merged.qza \
+  --o-classification /home/marcolabuser/Zach/USDA/q2_dec19/dada2/taxonomy.qza
+
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/rarefied_table.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_unfiltered_36251/taxa_barplot.qzv
+
+
+#filter singletons and repeat div analysis
+qiime feature-table filter-features \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged.qza \
+  --p-min-frequency 2 \
+  --p-min-samples 2 \
+  --o-filtered-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qza
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qzv
+#2,205 features ( of features removed)
+#7,613,076 seqs total ( seqs lost) 
+#min lib sizes: 1275, 4905, 9371, 36160
+
+#analyses with unfiltered data 
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qza \
+  --p-sampling-depth 36160 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --output-dir /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/
+
+#identify significant differences in alpha diversity between groups
+qiime diversity alpha-rarefaction \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1_R2_table_merged_filtered.qza \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --p-max-depth 36160 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/alpha_rarefaction.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/faith_pd_vector.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/alpha_sig_faith_pd.qzv
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/weighted_unifrac_distance_matrix.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Code2 \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/PERMANOVA_code2_weighted_unifrac_distance_matrix.qzv
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/bray_curtis_distance_matrix.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Code2 \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/PERMANOVA_code2_bray_curtis_distance_matrix.qzv
+
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/rarefied_table.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/core_div_filtered_36160/taxa_barplot.qzv
+
+
+###################
+#Diversity analysis of just R1 file
+###################
+#since qual in R2 looks really bad, Maria and I decided we should just use R1 file for analysis 
+qiime feature-table filter-features \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table.qza \
+  --p-min-frequency 2 \
+  --p-min-samples 2 \
+  --o-filtered-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered.qza
+
+qiime feature-table summarize \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered.qzv
+#1819 features 
+#3,533,150 seqs total 
+#min lib sizes: 623, 2333, 4473, 17500
+
+#filtering out 4 samples that are behaving strangely 
+qiime feature-table filter-samples \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered.qza \
+  --m-metadata-file /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/outliter_samples.txt \
+  --o-filtered-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_samples_removed.qza \
+  --p-exclude-ids
+
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_samples_removed.qza \
+  --p-sampling-depth 17500 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --output-dir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/
+
+qiime taxa collapse \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_table.qza \
+  --i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+  --p-level 7 \
+  --o-collapsed-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_table_17500_L7_USDA.qza
+
+unzip /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_table_17500_L7_USDA.qza -d /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/
+
+biom convert -i /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/669ae820-3bd9-40e3-8366-9d6e989af993/data/feature-table.biom -o /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_table_17500_L7_USDA.txt --header-key taxonomy --to-tsv --table-type "OTU table"
+
+unzip /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_table.qza -d /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/
+
+biom convert -i /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/520c6c7e-6813-42b7-aca1-c39ca51df340/data/feature-table.biom -o /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_ASV_table_17500_USDA.txt --header-key taxonomy --to-tsv --table-type "OTU table"
+
+qiime feature-table tabulate-seqs \
+  --i-data /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/representative_sequences.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/representative_sequences_tabulated.qzv
+
+qiime metadata tabulate \
+  --m-input-file /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qzv
+
+#generating taxa barplot 
+qiime taxa barplot \
+--i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_table.qza \
+--i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+--m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+--o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/taxa_barplot.qzv
+
+qiime diversity alpha-rarefaction \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered.qza \
+  --i-phylogeny /home/marcolabuser/Zach/USDA/q2_dec19/dada2/rooted_tree_masked_aligned_R1_R2_rep_seqs_merged.qza \
+  --p-max-depth 17500 \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/alpha_rarefaction.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/faith_pd_vector.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/alpha_sig_faith_pd.qzv
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/bray_curtis_distance_matrix.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Code2 \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/PERMANOVA_code2_bray_curtis_distance_matrix.qzv \
+  --p-pairwise \
+  --p-method permanova
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/bray_curtis_distance_matrix.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Code \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/PERMANOVA_code_bray_curtis_distance_matrix.qzv \
+  --p-pairwise \
+  --p-method anosim
+
+###################
+#Differential abundance of taxa 
+###################
+#LEFSE analysis of DA taxa
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games 
+python -V 
+mkdir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse
+#Rarefeid table collapsed at species level: /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_table_17500_L7_USDA.txt
+#add OTU IDs, move taxa strings over
+/home/marcolabuser/Zach/Q2M/biobakery-qiimetomaaslin-eff6912bb066/build/scripts-2.7/qiimeToMaaslin.py "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" </home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/rarefied_table_17500_L7_USDA_edit.txt> /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA.txt
+#IndexError: list index out of range
+#get rid of any unexpected spaces in the files, make sure there are no empty cells in mapfile, then it ran fine
+
+#edit input table to just have metadata of interest, move Sample ID to last of three rows and metadata of interest to top row  
+cd /home/marcolabuser/Zach/lefse/nsegata-lefse-c276d1e0aa0d
+
+python format_input.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit.txt /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_RS_main.in -c 1 -s 2 -u 3 -o 1000000
+
+python run_lefse.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_RS_main.in /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_RS_main_lda4.res -l 4.0 
+#36 features significantly different at LDA 4 
+python plot_res.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_RS_main_lda4.res /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_RS_main_lda4.png
+
+python format_input.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit.txt /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_WG_main.in -c 2 -s 1 -u 3 -o 1000000
+
+python run_lefse.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_WG_main.in /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_WG_main_lda4.res -l 4.0 
+#10 features significantly different at LDA 4 
+python plot_res.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_WG_main_lda4.res /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_WG_main_lda4.png
+
+
+#I want to see if there are any fat-responsive taxa across all groups.  Additionally, I want to identify taxa enriched in specific groups 
+python format_input.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_fat_code.txt /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_fat_main.in -c 2 -s 1 -u 3 -o 1000000
+
+python run_lefse.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_fat_main.in /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_fat_main.res -l 4.0 
+#0 features significantly different at LDA 4 
+python run_lefse.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_fat_main.in /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_fat_main_lda2.res -l 2.0 
+#0 features significantly different at LDA 2
+
+python format_input.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_fat_code.txt /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_code_main.in -c 1 -s 2 -u 3 -o 1000000
+
+python run_lefse.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_code_main.in /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_code_main.res -l 4.0 
+#37 features significantly different at LDA 4 
+python plot_res.py /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_code_main.res /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/diversity_17500/lefse/Q2M_rarefied_table_17500_L7_USDA_edit_code_main.png
+
+
+
+###################
+#Gneiss model  
+###################
+#using the unrarefied, ASV-filtered table as input 
+qiime composition add-pseudocount \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_samples_removed.qza \
+  --o-composition-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza
+
+mkdir /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/
+
+#instead of clustering by metadata, I clustered taxa by co-occurrence 
+qiime gneiss correlation-clustering \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza \
+  --o-clustering /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza
+
+qiime gneiss ilr-transform \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza \
+  --o-balances /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/balances.qza
+
+qiime gneiss ols-regression \
+  --p-formula "Cecal_pH+Ab_fat+Acetate+Butyrate+Propionate" \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/balances.qza \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/regression_summary.qzv
+#look at coefficient and p-value outputs 
+#Cecal pH have the highest coefficients and p values < 0.05 in the y2 balance, so will investigate it further 
+
+#can now look at which taxa respond to each variable 
+qiime gneiss balance-taxonomy \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza \
+  --i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+  --p-taxa-level 6 \
+  --p-balance-name 'y2' \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Cecal_pH \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/y2_taxa_summary_Cecal_pH_L6.qzv
+
+qiime gneiss balance-taxonomy \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza \
+  --i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+  --p-taxa-level 5 \
+  --p-balance-name 'y2' \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Cecal_pH \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/y2_taxa_summary_Cecal_pH_L5.qzv
+
+qiime gneiss balance-taxonomy \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza \
+  --i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+  --p-taxa-level 4 \
+  --p-balance-name 'y2' \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Cecal_pH \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/y2_taxa_summary_Cecal_pH_L4.qzv
+
+qiime gneiss balance-taxonomy \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza \
+  --i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+  --p-taxa-level 6 \
+  --p-balance-name 'y4' \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Butyrate \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/y4_taxa_summary_butyrate_L6.qzv
+
+qiime gneiss balance-taxonomy \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza \
+  --i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+  --p-taxa-level 5 \
+  --p-balance-name 'y4' \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Butyrate \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/y4_taxa_summary_butyrate_L5.qzv
+
+qiime gneiss balance-taxonomy \
+  --i-table /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/table_filtered_pseudocount.qza \
+  --i-tree /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/hierarchy.qza \
+  --i-taxonomy /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/taxonomy.qza \
+  --p-taxa-level 4 \
+  --p-balance-name 'y4' \
+  --m-metadata-file "/media/marcolabuser/GoFlex Home/Zach/USDA/RS_mapfile.txt" \
+  --m-metadata-column Butyrate \
+  --o-visualization /home/marcolabuser/Zach/USDA/q2_dec19/dada2/R1/no_qual_trimming/gneiss_model/y4_taxa_summary_butyrate_L4.qzv
