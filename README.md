@@ -1,5 +1,5 @@
 # USDA Rat Study
-Scripts I used to process USDA metataxonomics and metatranscriptomics data 
+Scripts used to process USDA metataxonomics and metatranscriptomics data 
 
 ### MG-RAST Identifiers (RNA-Seq Metatranscriptomics)
 #### Project name: Rat Cecal Content Metatranscriptomics During Fiber Feeding
