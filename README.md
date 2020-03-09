@@ -1,6 +1,10 @@
 # USDA Rat Study
 Scripts used to process USDA metataxonomics and metatranscriptomics data 
 
+### Funding
+- USDA–NIFA #2014–67017–21760
+- Partially supported by NORC Center Grant #P30DK072476 “Nutritional Programming: Environmental and Molecular Interactions”
+
 ### Project Description
 6-wk old Sprague Dawley rats were fed a standard rat chow diet (CON), a diet supplemented with amylose-free whole grain maize (WG), a diet supplemented with high-amylose purified maize starch (RS), or a diet supplemented with high-amylose whole grain maize (WG+RS) for 6 weeks. The four main diet groups were further split into medium-fat (~30% kcal from fat) and high-fat (~42% kcal from fat) diet arms to investigate how dietary fat levels influence the outcomes of fiber consumption. Cecal contents were harvested then flash frozen, and gDNA and RNA was extracted from the frozen cecal contents for metataxonomics and metatranscriptomics analysis.
 
