@@ -23,6 +23,25 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 | Energy (kcal/g)  | 3.757  | 3.750  | 3.761  | 3.754  |
 | Resistant starch (%)  | 0 | 23.37 | 4.93  | 23.45  |
 
+### Diet Composition - High Fat Diets
+| Ingredients  | CON  | RS  | WG  | WG+RS |
+| ------------- | ------------- | ------------- | ------------- | ------------- |
+| Waxy cornstarch (g)  | 405.80  | 0  | 0  | 77.85 |
+| High-amylose cornstarch (g)  | 0  | 524.66  | 0  | 0 |
+| High-amylose whole-grain flour (g)  | 0  | 0  | 0  | 525.00 |
+| Waxy whole-grain flour(g)  | 0  | 0 | 517.00  | 0 |
+| Sucrose (g)  | 100.00  | 100.00  | 100.00  | 100.00 |
+| Casein (g)  | 136.75  | 133.70  | 98.74  | 80.58 |
+| Cellulose (g)  | 110.00  | 0  | 56.91  | 10.00 |
+| Corn oil (g)  | 99.25  | 93.44  | 79.15  | 58.27 |
+| Lard (g)  | 100  | 100  | 100  | 100 |
+| Mineral mix (g)  | 35.00  | 35.00  | 35.00  | 35.00 |
+| Vitamin mix (g)  | 10.00  | 10.00  | 10.00  | 10.00 |
+| Choline chloride (g)  | 2.80  | 2.80  | 2.80  | 2.80  |
+| L-Cystine (g)  | 1.80  | 1.80  | 1.80  | 1.80 |
+| Total (g)  | 1001.40  | 1001.40 | 1001.40 | 1001.40 |
+| Energy (kcal/g)  | 4.164  | 4.136  | 4.230  | 4.209  |
+| Resistant starch (%)  | 0 | 23.32 | 5.03  | 23.41  |
 
 ### MG-RAST Identifiers (RNA-Seq Metatranscriptomics)
 #### Project name: Rat Cecal Content Metatranscriptomics During Fiber Feeding
