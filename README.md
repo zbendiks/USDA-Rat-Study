@@ -2,7 +2,26 @@
 Scripts used to process USDA metataxonomics and metatranscriptomics data 
 
 ### Project Description
-6-wk old Sprague Dawley rats were fed a standard rat chow diet (CON), a diet supplemented with amylose-free whole grain maize (WG), a diet supplemented with high-amylose purified maize starch (RS), or a diet supplemented with high-amylose whole grain maize (WG+RS) for 6 weeks. The four main diet groups were further split into medium-fat (33% kcal from fat) and high-fat (42% kcal from fat) diet arms to investigate how dietary fat levels influence the outcomes of fiber consumption. Cecal contents were harvested then flash frozen, and gDNA and RNA was extracted from the frozen cecal contents for metataxonomics and metatranscriptomics analysis.       
+6-wk old Sprague Dawley rats were fed a standard rat chow diet (CON), a diet supplemented with amylose-free whole grain maize (WG), a diet supplemented with high-amylose purified maize starch (RS), or a diet supplemented with high-amylose whole grain maize (WG+RS) for 6 weeks. The four main diet groups were further split into medium-fat (33% kcal from fat) and high-fat (42% kcal from fat) diet arms to investigate how dietary fat levels influence the outcomes of fiber consumption. Cecal contents were harvested then flash frozen, and gDNA and RNA was extracted from the frozen cecal contents for metataxonomics and metatranscriptomics analysis.
+
+### Diet Composition - Medium Fat Diets
+| Ingredients  | CON  | RS  | WG  | WG+RS |
+| ------------- | ------------- | ------------- | ------------- | ------------- |
+| Waxy cornstarch (g)  | 473.30  | 72.31  | 67.83  | 143.74 |
+| High-amylose whole-grain flour (g)  | 0  | 524.00  | 0  | 0 |
+| Waxy whole-grain flour(g)  | 0  | 0 | 500.00  | 0 |
+| Sucrose (g)  | 100.00  | 100.00  | 100.00  | 100.00 |
+| Casein (g)  | 136.00  | 133.12  | 99.42  | 80.56 |
+| Cellulose (g)  | 115.00  | 0  | 78.00  | 24.00 |
+| Corn oil (g)  | 85.00  | 79.87  | 64.05  | 41.00 |
+| Lard (g)  | 42.50  | 42.50  | 42.50  | 42.50 |
+| Mineral mix (g)  | 35.00  | 35.00  | 35.00  | 35.00 |
+| Vitamin mix (g)  | 10.00  | 10.00  | 10.00  | 10.00 |
+| Choline chloride (g)  | 2.80  | 2.80  | 2.80  | 2.80  |
+| L-Cystine (g)  | 1.80  | 1.80  | 1.80  | 1.80 |
+| Total (g)  | 1001.40  | 1001.40 | 1001.40 | 1001.40 |
+| Energy (kcal/g)  | 3.757  | 3.750  | 3.761  | 3.754  |
+| Resistant starch (%)  | 0 | 23.37 | 4.93  | 23.45  |
 
 
 ### MG-RAST Identifiers (RNA-Seq Metatranscriptomics)
