@@ -35,7 +35,7 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 | Casein (g)  | 136.75  | 133.70  | 98.74  | 80.58 |
 | Cellulose (g)  | 110.00  | 0  | 56.91  | 10.00 |
 | Corn oil (g)  | 99.25  | 93.44  | 79.15  | 58.27 |
-| Lard (g)  | 100  | 100  | 100  | 100 |
+| Lard (g)  | 100.00  | 100.00  | 100.00  | 100.00 |
 | Mineral mix (g)  | 35.00  | 35.00  | 35.00  | 35.00 |
 | Vitamin mix (g)  | 10.00  | 10.00  | 10.00  | 10.00 |
 | Choline chloride (g)  | 2.80  | 2.80  | 2.80  | 2.80  |
