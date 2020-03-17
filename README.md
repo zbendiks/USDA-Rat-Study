@@ -80,7 +80,7 @@ Scripts used to process USDA metataxonomics and metatranscriptomics data
 
 ### Funding
 - USDA–NIFA #2014–67017–21760
-- NORC Center Grant #P30DK072476 “Nutritional Programming: Environmental and Molecular Interactions”
+- Nutrition Obesity Research Center (NORC) Center Grant #P30DK072476 “Nutritional Programming: Environmental and Molecular Interactions”
 
 ### Publications (add DOI and citations) 
 - Justin's paper 
